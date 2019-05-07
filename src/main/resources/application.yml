@@ -2,3 +2,13 @@ spring:
   redis:
     host: localhost
     port: 6379
+  profiles:
+    active: local
+
+---
+spring:
+  profiles: local
+
+---
+spring:
+  profiles: real

@@ -1,0 +1,45 @@
+language: java
+jdk:
+  - openjdk8
+
+branches:
+  only:
+    - master
+
+# Travis CI 서버의 Home
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+    - '$HOME/.gradle'
+
+script: "./gradlew clean build"
+
+# 배포에 필요한 파일들만 archive 에 옮겨서 archive/archive.zip 파일로 만든다.
+before_deploy:
+  - mkdir -p archive
+  - cp Procfile archive/Procfile
+  - cp build/libs/*.jar archive/application.jar
+  - cp -r ./.ebextensions archive/.ebextensions
+  - cd archive
+  - ls -al
+  - zip -r archive.zip application.jar .ebextensions Procfile
+
+deploy:
+  provider: elasticbeanstalk
+  zip_file: archive.zip # before_deploy에서 이미 archive로 이동한 상태(cd archive)라 현재 위치에서 archive.zip 전송
+  skip_cleanup: true
+  access_key_id: $AWS_ACCESS_KEY # declared in Travis repo settings
+  secret_access_key:
+    secure: $AWS_SECRET_KEY
+  region: "ap-northeast-2"
+  app: "dwlee-test-eb"
+  env: "dwlee-redis-test"
+  bucket_name: "dwlee-beanstalk"  # S3 bucket name
+  on:
+    branch: master
+
+after_deploy:
+  - echo "Elastic Beanstalk 배포 진행중입니다."
+
+notifications:
+  webhooks: https://fathomless-fjord-24024.herokuapp.com/notify
