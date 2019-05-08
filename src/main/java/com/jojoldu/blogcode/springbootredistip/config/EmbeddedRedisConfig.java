@@ -19,7 +19,6 @@ public class EmbeddedRedisConfig {
 
     private final RedisProperties redisProperties;
 
-
     private RedisServer redisServer;
 
     @PostConstruct
