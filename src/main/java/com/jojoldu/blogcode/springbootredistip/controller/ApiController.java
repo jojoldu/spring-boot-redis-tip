@@ -26,11 +26,15 @@ public class ApiController {
         String randomId = createId();
         LocalDateTime now = LocalDateTime.now();
 
-        availablePointRedisRepository.save(AvailablePoint.builder()
+        AvailablePoint availablePoint = AvailablePoint.builder()
                 .id(randomId)
                 .point(1L)
                 .refreshTime(now)
-                .build());
+                .build();
+
+        log.info(">>>>>>> [save] availablePoint={}", availablePoint);
+
+        availablePointRedisRepository.save(availablePoint);
 
         return "save";
     }
