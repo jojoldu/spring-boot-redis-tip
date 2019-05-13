@@ -5,6 +5,8 @@ spring:
   profiles:
     active: local
 
+logging.path: logs/spring-redis-tip/
+
 ---
 spring:
   profiles: local
