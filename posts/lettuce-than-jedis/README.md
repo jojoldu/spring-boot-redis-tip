@@ -1,8 +1,234 @@
 # Jedis 보다 Lettuce 를 쓰자
 
+Java의 Redis Client는 크게 2가지가 있습니다.
+
+* [Jedis](https://github.com/xetorthio/jedis)
+* [Lettuce](https://github.com/lettuce-io/lettuce-core)
+
+둘 모두 몇천개의 Star를 가질만큼 유명한 오픈소스입니다.  
+이번 시간에는 둘 중 어떤것을 사용해야할지에 대해 **성능 테스트 결과**를 공유하고자 합니다.
+
 > 모든 코드와 Beanstalk 설정값은 [Github](https://github.com/jojoldu/spring-boot-redis-tip)에 있으니 참고하세요.
 
+> 레디스외 병목현상을 방지하기 위해 Nginx, 커널 파라미터 등은 모두 적절하게 [튜닝](https://github.com/jojoldu/spring-boot-redis-tip/tree/master/.ebextensions)된 상태입니다.
 
+## 0. 프로젝트 환경
+
+우선 테스트에 사용될 Redis Entity 코드는 아래와 같습니다.
+
+```java
+@ToString
+@Getter
+@RedisHash("availablePoint")
+public class AvailablePoint implements Serializable {
+
+    @Id
+    private String id; // userId
+    private Long point;
+    private LocalDateTime refreshTime;
+
+    @Builder
+    public AvailablePoint(String id, Long point, LocalDateTime refreshTime) {
+        this.id = id;
+        this.point = point;
+        this.refreshTime = refreshTime;
+    }
+}
+```
+
+```java
+public interface AvailablePointRedisRepository extends CrudRepository<AvailablePoint, String> {
+}
+```
+
+임의의 데이터를 저장하고, 가져올 ```Controller``` 코드는 아래와 같습니다.
+
+```java
+@Slf4j
+@RequiredArgsConstructor
+@RestController
+public class ApiController {
+    private final AvailablePointRedisRepository availablePointRedisRepository;
+
+    @GetMapping("/")
+    public String ok () {
+        return "ok";
+    }
+
+    @GetMapping("/save")
+    public String save(){
+        String randomId = createId();
+        LocalDateTime now = LocalDateTime.now();
+
+        AvailablePoint availablePoint = AvailablePoint.builder()
+                .id(randomId)
+                .point(1L)
+                .refreshTime(now)
+                .build();
+
+        log.info(">>>>>>> [save] availablePoint={}", availablePoint);
+
+        availablePointRedisRepository.save(availablePoint);
+
+        return "save";
+    }
+
+
+    @GetMapping("/get")
+    public long get () {
+        String id = createId();
+        return availablePointRedisRepository.findById(id)
+                .map(AvailablePoint::getPoint)
+                .orElse(0L);
+    }
+
+    private String createId() {
+        SplittableRandom random = new SplittableRandom();
+        return String.valueOf(random.nextInt(1, 1_000_000_000));
+    }
+}
+```
+
+위 ```/save``` API를 통해 테스트할 데이터를 Redis에 적재해서 사용합니다.  
+성능 테스트는 ```/get``` API를 통해 진행합니다.  
+  
+
+### 0-1. EC2 사양
+
+Spring Boot가 실행되어 Redis로 요청할 EC2의 사양은 아래와 같습니다.
+
+![ec2](./images/ec2.png)
+
+(최대한 Redis 자원을 사용하기 위해 높은 사양을 선택했습니다.)
+
+* R5d.4xLarge X 4대
+
+### 0-2. Redis 사양
+
+테스트에 사용될 Redis (Elastic Cache) 의 사양은 아래와 같습니다.
+
+![spec](images/spec.png)
+
+* R5.large
+* Redis 5.0.3
+
+테스트용 데이터는 대략 **1천만건**을 적재하였습니다.
+
+![count](./images/count.png)
+
+자 그럼 먼저 Jedis를 먼저 테스트해보겠습니다.
+
+## 1. Jedis
+
+Jedis는 예전부터 Java의 표준 Redis Client로 사용되었습니다.  
+그래서 대부분의 Java & Redis 예제가 Jedis로 되어 있는데요.  
+여기서도 기본적인 Jedis 설정만 사용하겠습니다.
+
+
+```java
+@RequiredArgsConstructor
+@Configuration
+@EnableRedisRepositories
+public class RedisRepositoryConfig {
+    private final RedisProperties redisProperties;
+
+    //jedis
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new JedisConnectionFactory(new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort()));
+    }
+
+    @Bean
+    public RedisTemplate<?, ?> redisTemplate() {
+        RedisTemplate<byte[], byte[]> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(redisConnectionFactory());
+        return redisTemplate;
+    }
+}
+```
+
+build.gradle에서는 **기본 의존성인 lettuce를 제거**하고 Jedis를 등록합니다.
+
+```groovy
+dependencies {
+    compile group: 'it.ozimov', name: 'embedded-redis', version: '0.7.2'
+
+    // jedis
+    compile group: 'redis.clients', name: 'jedis'
+    compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.6.2'
+    compile ('org.springframework.boot:spring-boot-starter-data-redis') {
+        exclude group: 'io.lettuce', module: 'lettuce-core'
+    }
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+```
+
+
+### 성능 테스트 결과
+
+Agent
+
+![jedis-agent1](./images/jedis-agent1.png)
+
+![jedis-pinpoint](./images/jedis-pinpoint.png)
+
+![jedis-connection](./images/jedis-connection.png)
+
+![jedis-result-740](./images/jedis-result-740.png)
+
+
+> 제가 포인트 시스템에 Redis를 적용하던 시점에는 Jedis가 더이상 업데이트되지 않고 있었습니다.  
+2016년 9월이후로 더이상 릴리즈 되지 않다가, 2018년 11월부터 다시 릴리즈가 되고 있습니다.  
+혹시나 jedis를 사용하실 분들은 [릴리즈 노트](https://github.com/xetorthio/jedis/releases)를 참고해보세요.
+
+
+## 2. Lettuce
+
+Lettuce
+
+```java
+@RequiredArgsConstructor
+@Configuration
+@EnableRedisRepositories
+public class RedisRepositoryConfig {
+    private final RedisProperties redisProperties;
+
+    // lettuce
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new LettuceConnectionFactory(redisProperties.getHost(), redisProperties.getPort());
+    }
+
+    @Bean
+    public RedisTemplate<?, ?> redisTemplate() {
+        RedisTemplate<byte[], byte[]> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(redisConnectionFactory());
+        return redisTemplate;
+    }
+}
+```
+
+build.gradle
+
+```groovy
+dependencies {
+    compile group: 'it.ozimov', name: 'embedded-redis', version: '0.7.2'
+    // lettuce
+    compile ('org.springframework.boot:spring-boot-starter-data-redis')
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+```
 
 Jedis는 애플리케이션이 Jedis여러 스레드 에서 단일 인스턴스 를 공유하려고 할 때 스레드로부터 안전하지 않은 직선적 인 Redis 클라이언트입니다. 
 멀티 쓰레드 환경에서 Jedis를 사용하는 접근법은 Connection Pool을 사용하는 것입니다.
