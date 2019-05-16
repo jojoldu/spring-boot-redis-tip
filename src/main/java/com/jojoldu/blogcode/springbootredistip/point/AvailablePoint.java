@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 @Getter
 @RedisHash("availablePoint")
 public class AvailablePoint implements Serializable {
-    private static final String DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
     @Id
     private String id; // userId
@@ -26,12 +25,4 @@ public class AvailablePoint implements Serializable {
         this.point = point;
         this.refreshTime = refreshTime;
     }
-
-    public AvailablePoint refresh(Long point, LocalDateTime refreshTime) {
-        this.point = point;
-        this.refreshTime = refreshTime;
-        return this;
-    }
-
-
 }
