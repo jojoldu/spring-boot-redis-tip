@@ -14,7 +14,14 @@ Java의 Redis Client는 크게 2가지가 있습니다.
 
 ## 0. 프로젝트 환경
 
-우선 테스트에 사용될 Redis Entity 코드는 아래와 같습니다.
+의존성 환경은 아래와 같습니다.
+
+* Spring Boot 2.1.4
+* Spring Boot Data Redis 2.1.4
+* Jedis 2.9.0
+* Lettuce 5.1.6
+
+그리고 테스트에 사용될 Redis Entity 코드는 아래와 같습니다.
 
 ```java
 @ToString
@@ -82,6 +89,7 @@ public class ApiController {
                 .orElse(0L);
     }
 
+    // 임의의 키를 생성하기 위해 1 ~ 1_000_000_000 사이 랜덤값 생성
     private String createId() {
         SplittableRandom random = new SplittableRandom();
         return String.valueOf(random.nextInt(1, 1_000_000_000));
@@ -91,11 +99,10 @@ public class ApiController {
 
 위 ```/save``` API를 통해 테스트할 데이터를 Redis에 적재해서 사용합니다.  
 성능 테스트는 ```/get``` API를 통해 진행합니다.  
-  
 
 ### 0-1. EC2 사양
 
-Spring Boot가 실행되어 Redis로 요청할 EC2의 사양은 아래와 같습니다.
+Spring Boot가 실행되고 Redis로 요청할 EC2의 사양은 아래와 같습니다.
 
 ![ec2](./images/ec2.png)
 
@@ -123,7 +130,6 @@ Spring Boot가 실행되어 Redis로 요청할 EC2의 사양은 아래와 같습
 Jedis는 예전부터 Java의 표준 Redis Client로 사용되었습니다.  
 그래서 대부분의 Java & Redis 예제가 Jedis로 되어 있는데요.  
 여기서도 기본적인 Jedis 설정만 사용하겠습니다.
-
 
 ```java
 @RequiredArgsConstructor
@@ -169,8 +175,13 @@ dependencies {
 
 ```
 
+자 그리고 첫번째 테스트를 시작해보겠습니다.
 
-### 성능 테스트 결과
+### 1-1. Not Connection Pool
+
+
+> 참고로 모든 테스트는 [JVM의 Warm up Time](https://dzone.com/articles/why-many-java-performance-test)을 고려하여 2번이상 테스트하였습니다.
+
 
 Agent
 
@@ -186,6 +197,8 @@ Agent
 > 제가 포인트 시스템에 Redis를 적용하던 시점에는 Jedis가 더이상 업데이트되지 않고 있었습니다.  
 2016년 9월이후로 더이상 릴리즈 되지 않다가, 2018년 11월부터 다시 릴리즈가 되고 있습니다.  
 혹시나 jedis를 사용하실 분들은 [릴리즈 노트](https://github.com/xetorthio/jedis/releases)를 참고해보세요.
+
+### 1-2. Use Connection Pool
 
 
 ## 2. Lettuce
