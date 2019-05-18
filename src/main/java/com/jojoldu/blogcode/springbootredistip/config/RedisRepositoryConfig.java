@@ -20,19 +20,23 @@ import java.time.Duration;
 public class RedisRepositoryConfig {
     private final RedisProperties redisProperties;
 
-    //jedis
+    // jedis
+//    @Bean
+//    public RedisConnectionFactory redisConnectionFactory() {
+//        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
+//        return new JedisConnectionFactory(config);
+//    }
+
+    //jedis connection pool
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
-        return new JedisConnectionFactory(new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort()));
+        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
+        JedisConnectionFactory jedisConnectionFactory = new JedisConnectionFactory(config);
+        jedisConnectionFactory.setPoolConfig(jedisPoolConfig());
+        return jedisConnectionFactory;
     }
 
-    @Bean
-    public JedisPool jedisPool() {
-        final JedisPoolConfig poolConfig = buildPoolConfig();
-        return new JedisPool(poolConfig, redisProperties.getHost());
-    }
-
-    private JedisPoolConfig buildPoolConfig() {
+    private JedisPoolConfig jedisPoolConfig() {
         final JedisPoolConfig poolConfig = new JedisPoolConfig();
         poolConfig.setMaxTotal(128);
         poolConfig.setMaxIdle(128);

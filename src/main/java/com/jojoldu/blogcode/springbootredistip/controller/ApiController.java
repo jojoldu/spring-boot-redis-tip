@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 import java.time.LocalDateTime;
 import java.util.SplittableRandom;
@@ -15,6 +17,7 @@ import java.util.SplittableRandom;
 @RestController
 public class ApiController {
     private final AvailablePointRedisRepository availablePointRedisRepository;
+    private final JedisPool jedisPool;
 
     @GetMapping("/")
     public String ok () {
@@ -42,6 +45,14 @@ public class ApiController {
 
     @GetMapping("/get")
     public long get () {
+        String id = createId();
+        return availablePointRedisRepository.findById(id)
+                .map(AvailablePoint::getPoint)
+                .orElse(0L);
+    }
+
+    @GetMapping("/get2")
+    public long get2 () {
         String id = createId();
         return availablePointRedisRepository.findById(id)
                 .map(AvailablePoint::getPoint)
