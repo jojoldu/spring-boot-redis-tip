@@ -17,7 +17,6 @@ import java.util.SplittableRandom;
 @RestController
 public class ApiController {
     private final AvailablePointRedisRepository availablePointRedisRepository;
-    private final JedisPool jedisPool;
 
     @GetMapping("/")
     public String ok () {
