@@ -179,13 +179,22 @@ dependencies {
 
 ### 1-1. Not Connection Pool
 
+먼저 Connection Pool 설정 없이 테스트해보겠습니다.
 
 > 참고로 모든 테스트는 [JVM의 Warm up Time](https://dzone.com/articles/why-many-java-performance-test)을 고려하여 2번이상 테스트하였습니다.
 
 
+VUser 740명으로 시도합니다.
+
+* agent는 5대
+* 각 agent 별 148명을 지정했습니다.
+* 부하 테스트 시간은 3분
+
 Agent
 
 ![jedis-agent1](./images/jedis-agent1.png)
+
+핀포인트 결과는 평균 **125ms**가 나왔습니다.
 
 ![jedis-pinpoint](./images/jedis-pinpoint.png)
 
@@ -194,14 +203,54 @@ Agent
 ![jedis-result-740](./images/jedis-result-740.png)
 
 
-> 제가 포인트 시스템에 Redis를 적용하던 시점에는 Jedis가 더이상 업데이트되지 않고 있었습니다.  
+> 제가 사내 시스템에 Redis를 적용하던 시점에는 Jedis가 더이상 업데이트되지 않고 있었습니다.  
 2016년 9월이후로 더이상 릴리즈 되지 않다가, 2018년 11월부터 다시 릴리즈가 되고 있습니다.  
 혹시나 jedis를 사용하실 분들은 [릴리즈 노트](https://github.com/xetorthio/jedis/releases)를 참고해보세요.
 
 ### 1-2. Use Connection Pool
 
+Connection Pool을 사용하지 않으니 
+
+* TPS가 생각보다 낮게 나왔습니다.
+* Redis Connection과 EC2 서버의 CPU가 여유로웠습니다.
+
+```java
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
+        JedisConnectionFactory jedisConnectionFactory = new JedisConnectionFactory(config);
+        jedisConnectionFactory.setPoolConfig(jedisPoolConfig());
+        return jedisConnectionFactory;
+    }
+
+    private JedisPoolConfig jedisPoolConfig() {
+        final JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(128);
+        poolConfig.setMaxIdle(128);
+        poolConfig.setMinIdle(36);
+        poolConfig.setTestOnBorrow(true);
+        poolConfig.setTestOnReturn(true);
+        poolConfig.setTestWhileIdle(true);
+        poolConfig.setMinEvictableIdleTimeMillis(Duration.ofSeconds(60).toMillis());
+        poolConfig.setTimeBetweenEvictionRunsMillis(Duration.ofSeconds(30).toMillis());
+        poolConfig.setNumTestsPerEvictionRun(3);
+        poolConfig.setBlockWhenExhausted(true);
+        return poolConfig;
+    }
+```
+
+* Jedis는 최대 Pool Size를 초과해서 Connection을 맺을 수 있다.
+* Jedis의 경우 TP
+
+문제는 **이보다 더 높은 TPS를 맞추려면 Redis의 CPU가 90%를 넘을수도** 있습니다.  
+  
+이건 충분히 문제가 되겠죠?  
+  
+Jedis를 **꼭** 써야한다면 성능 테스트를 통해 **적절한 Pool Size**를 찾아보셔야만 합니다.
 
 ## 2. Lettuce
+
+다음으로 Lettuce로 설정을 변경후 테스트해보겠습니다.
 
 Lettuce
 
@@ -242,6 +291,29 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 ```
+
+자 이렇게 설정후 테스트를 해보면!
+
+TPS는 무려 **10만**을 처리합니다.
+
+![lettuce-result-740](./images/lettuce-result-740.png)
+
+실제로 워낙 빠르게 처리하다보니 **대량의 요청을 해야하는 agent CPU가 70%까지** 올라갔습니다
+
+![lettuce-agent1](./images/lettuce-agent1.png)
+
+Connection은 **6-7**개를 유지합니다.
+
+![lettuce-connection](./images/lettuce-connection.png)
+
+
+CPU는 **7**%밖에 되지 않습니다.
+
+![lettuce-cpu](./images/lettuce-cpu.png)
+
+
+
+
 
 Jedis는 애플리케이션이 Jedis여러 스레드 에서 단일 인스턴스 를 공유하려고 할 때 스레드로부터 안전하지 않은 직선적 인 Redis 클라이언트입니다. 
 멀티 쓰레드 환경에서 Jedis를 사용하는 접근법은 Connection Pool을 사용하는 것입니다.
