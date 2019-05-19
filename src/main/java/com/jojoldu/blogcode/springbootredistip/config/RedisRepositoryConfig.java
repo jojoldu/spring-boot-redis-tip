@@ -21,11 +21,11 @@ public class RedisRepositoryConfig {
     private final RedisProperties redisProperties;
 
     // jedis
-//    @Bean
-//    public RedisConnectionFactory redisConnectionFactory() {
-//        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
-//        return new JedisConnectionFactory(config);
-//    }
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
+        return new JedisConnectionFactory(config);
+    }
 
     //jedis connection pool
 //    @Bean
@@ -52,10 +52,10 @@ public class RedisRepositoryConfig {
 //    }
 
     // lettuce
-    @Bean
-    public RedisConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory(redisProperties.getHost(), redisProperties.getPort());
-    }
+//    @Bean
+//    public RedisConnectionFactory redisConnectionFactory() {
+//        return new LettuceConnectionFactory(redisProperties.getHost(), redisProperties.getPort());
+//    }
 
 
     @Bean

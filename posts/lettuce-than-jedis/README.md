@@ -155,6 +155,8 @@ public class RedisRepositoryConfig {
 
 build.gradle에서는 **기본 의존성인 lettuce를 제거**하고 Jedis를 등록합니다.
 
+> Spring Boot 2.0이 되고 lettuce가 기본 클라이언트가 되어서 아래와 같이 제거해야만 합니다.
+
 ```groovy
 dependencies {
     compile group: 'it.ozimov', name: 'embedded-redis', version: '0.7.2'
@@ -175,7 +177,7 @@ dependencies {
 
 ```
 
-자 그리고 첫번째 테스트를 시작해보겠습니다.
+정상적으로 수행하셨다면 첫번째 테스트를 시작해보겠습니다.
 
 ### 1-1. Not Connection Pool
 
