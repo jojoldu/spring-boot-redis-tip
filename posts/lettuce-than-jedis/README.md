@@ -134,7 +134,9 @@ Spring Boot가 실행되고 Redis로 요청할 EC2의 사양은 아래와 같습
 
 Jedis는 예전부터 Java의 표준 Redis Client로 사용되었습니다.  
 그래서 대부분의 Java & Redis 예제가 Jedis로 되어 있는데요.  
-Spring Boot에서는 다음과 같은 의존성 설정이 필요합니다.  
+Spring Boot에서는 다음과 같이 **기본 의존성인 lettuce를 제거**하고 Jedis를 등록합니다.
+
+> Spring Boot 2.0이 되고 lettuce가 기본 클라이언트가 되어서 아래와 같이 제거해야만 합니다.
 
 ```groovy
 dependencies {
@@ -155,10 +157,6 @@ dependencies {
 }
 
 ```
-
-build.gradle에서는 **기본 의존성인 lettuce를 제거**하고 Jedis를 등록합니다.
-
-> Spring Boot 2.0이 되고 lettuce가 기본 클라이언트가 되어서 아래와 같이 제거해야만 합니다.
 
 정상적으로 수행하셨다면 첫번째 테스트인 **Connection Pool 설정 없이** 테스트 해보겠습니다.
 
