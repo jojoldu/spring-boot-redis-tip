@@ -4,6 +4,7 @@ import com.jojoldu.blogcode.springbootredistip.point.AvailablePoint;
 import com.jojoldu.blogcode.springbootredistip.point.AvailablePointRedisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import redis.clients.jedis.Jedis;
@@ -17,10 +18,17 @@ import java.util.SplittableRandom;
 @RestController
 public class ApiController {
     private final AvailablePointRedisRepository availablePointRedisRepository;
+    private final RedisTemplate redisTemplate;
 
     @GetMapping("/")
     public String ok () {
         return "ok";
+    }
+
+    @GetMapping("/keys")
+    public String keys() {
+        redisTemplate.getConnectionFactory().getConnection().keys("*".getBytes());
+        return "keys";
     }
 
     @GetMapping("/save")
@@ -40,7 +48,6 @@ public class ApiController {
 
         return "save";
     }
-
 
     @GetMapping("/get")
     public long get () {
