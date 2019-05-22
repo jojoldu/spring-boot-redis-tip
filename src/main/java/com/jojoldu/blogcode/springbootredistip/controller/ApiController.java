@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.SplittableRandom;
 
 @Slf4j
@@ -25,7 +26,7 @@ public class ApiController {
 
     @GetMapping("/keys")
     public String keys() {
-        redisTemplate.getConnectionFactory().getConnection().keys("*".getBytes());
+        Set<byte[]> keys = redisTemplate.keys("*");
         return "keys";
     }
 
