@@ -57,7 +57,6 @@ public class RedisRepositoryConfig {
         return new LettuceConnectionFactory(redisProperties.getHost(), redisProperties.getPort());
     }
 
-
     @Bean
     public RedisTemplate<?, ?> redisTemplate() {
         RedisTemplate<byte[], byte[]> redisTemplate = new RedisTemplate<>();
